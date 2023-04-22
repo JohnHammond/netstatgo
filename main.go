@@ -1,13 +1,15 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"github.com/shirou/gopsutil/net"
-	"github.com/shirou/gopsutil/process"
 	"log"
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/shirou/gopsutil/net"
+	"github.com/shirou/gopsutil/process"
 )
 
 func protocolToString(connType uint32, ip string) string {
@@ -29,6 +31,11 @@ func protocolToString(connType uint32, ip string) string {
 }
 
 func main() {
+	// Define command-line flags
+	portFlag := flag.Int("port", 0, "filter by port number")
+	processFlag := flag.String("process", "", "filter by process name")
+	flag.Parse()
+
 	// Get network connections
 	conns, err := net.Connections("all")
 	if err != nil {
@@ -43,6 +50,11 @@ func main() {
 			continue
 		}
 
+		// Check if connection matches port filter
+		if *portFlag > 0 && int(conn.Laddr.Port) != *portFlag {
+			continue
+		}
+
 		// Get process name
 		proc, err := process.NewProcess(conn.Pid)
 		if err != nil {
@@ -52,6 +64,11 @@ func main() {
 		procName, err := proc.Name()
 		if err != nil {
 			log.Println(err)
+			continue
+		}
+
+		// Check if connection matches process filter
+		if *processFlag != "" && !strings.Contains(strings.ToLower(procName), strings.ToLower(*processFlag)) {
 			continue
 		}
 
